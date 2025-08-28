@@ -1,115 +1,79 @@
-const viewer = new Cesium.Viewer("cesiumContainer", {
-  infoBox: false,
-  selectionIndicator: false,
-  shadows: true,
-  shouldAnimate: true,
-});
+// Define the viewer
+const viewer = new Cesium.Viewer("cesiumContainer");
 
-function createModel(url, height) {
-  viewer.entities.removeAll();
 
-  const position = Cesium.Cartesian3.fromDegrees(
-    -123.0744619,
-    44.0503706,
-    height,
-  );
-  const heading = Cesium.Math.toRadians(135);
-  const pitch = 0;
-  const roll = 0;
-  const hpr = new Cesium.HeadingPitchRoll(heading, pitch, roll);
-  const orientation = Cesium.Transforms.headingPitchRollQuaternion(position, hpr);
+// Grant CesiumJS access to your ion assets
+Cesium.Ion.defaultAccessToken = "mytoken123";
 
-  const entity = viewer.entities.add({
-    name: url,
-    position: position,
-    orientation: orientation,
-    model: {
-      uri: url,
-      minimumPixelSize: 128,
-      maximumScale: 20000,
-    },
-  });
-  viewer.trackedEntity = entity;
+
+// Set terrain provider as Cesium World Terrain using ion asset id 1
+viewer.scene.setTerrain(
+   new Cesium.Terrain(
+      Cesium.CesiumTerrainProvider.fromIonAssetId(1),
+   ),
+);
+viewer.scene.globe.depthTestAgainstTerrain = true;
+
+// Watts_River_Sub-Catchment_Boundary
+try {
+   const subCatchment = await Cesium.IonResource.fromAssetId(123456);
+   const subCatchmentSource = await Cesium.GeoJsonDataSource.load(subCatchment, {
+      clampToGround: true, // Clamp to the terrain
+      stroke: Cesium.Color.ORANGE, // Style in orange colour
+      strokeWidth: 2,
+   });
+   await viewer.dataSources.add(subCatchmentSource); // Add to the viewer
+   await viewer.zoomTo(subCatchmentSource); // Zoom the viewer to the boundary
+} catch (error) {
+  console.log(error);
 }
 
-const options = [
-  {
-    text: "Aircraft",
-    onselect: function () {
-      createModel("../SampleData/models/CesiumAir/Cesium_Air.glb", 5000.0);
-    },
-  },
-  {
-    text: "Drone",
-    onselect: function () {
-      createModel("../SampleData/models/CesiumDrone/CesiumDrone.glb", 150.0);
-    },
-  },
-  {
-    text: "Ground Vehicle",
-    onselect: function () {
-      createModel("../SampleData/models/GroundVehicle/GroundVehicle.glb", 0);
-    },
-  },
-  {
-    text: "Hot Air Balloon",
-    onselect: function () {
-      createModel(
-        "../SampleData/models/CesiumBalloon/CesiumBalloon.glb",
-        1000.0,
-      );
-    },
-  },
-  {
-    text: "Milk Truck",
-    onselect: function () {
-      createModel(
-        "../SampleData/models/CesiumMilkTruck/CesiumMilkTruck.glb",
-        0,
-      );
-    },
-  },
-  {
-    text: "Skinned Character",
-    onselect: function () {
-      createModel("../SampleData/models/CesiumMan/Cesium_Man.glb", 0);
-    },
-  },
-  {
-    text: "Unlit Box",
-    onselect: function () {
-      createModel("../SampleData/models/BoxUnlit/BoxUnlit.gltf", 10.0);
-    },
-  },
-  {
-    text: "Draco Compressed Model",
-    onselect: function () {
-      createModel(
-        "../SampleData/models/DracoCompressed/CesiumMilkTruck.gltf",
-        0,
-      );
-    },
-  },
-  {
-    text: "KTX2 Compressed Balloon",
-    onselect: function () {
-      if (!Cesium.FeatureDetection.supportsBasis(viewer.scene)) {
-        window.alert(
-          "This browser does not support Basis Universal compressed textures",
-        );
-      }
-      createModel(
-        "../SampleData/models/CesiumBalloonKTX2/CesiumBalloonKTX2.glb",
-        1000.0,
-      );
-    },
-  },
-  {
-    text: "Instanced Box",
-    onselect: function () {
-      createModel("../SampleData/models/BoxInstanced/BoxInstanced.gltf", 15);
-    },
-  },
-];
+// Water_Body_Polygons
+try {
+   const waterBodies = await Cesium.IonResource.fromAssetId(123456);
+   const waterBodiesSource = await Cesium.GeoJsonDataSource.load(waterBodies, {
+      clampToGround: true, // Clamp to the terrain
+      fill: Cesium.Color.DODGERBLUE.withAlpha(0.9), // Style in blue colour
+   });
+   await viewer.dataSources.add(waterBodiesSource); // Add to the viewer
+   await viewer.zoomTo(waterBodiesSource); // Zoom the viewer to the boundary
+} catch (error) {
+  console.log(error);
+}
 
-Sandcastle.addToolbarMenu(options);
+// Flood_Water_Surface
+try {
+   const floodSource = await Cesium.GeoJsonDataSource.load(
+      await Cesium.IonResource.fromAssetId(123456)
+   );
+
+   const floodHeight = 92; // meters above sea level
+   const floodColor = Cesium.Color.BLUE.withAlpha(0.4); // Blue with transparency
+
+   floodSource.entities.values.forEach(entity => {
+      if (entity.polygon) {
+         entity.polygon.extrudedHeight = floodHeight; // Set floodHeight
+         entity.polygon.material = floodColor;
+         entity.polygon.outline = false;
+      }
+   });
+
+  await viewer.dataSources.add(floodSource); // Add to the viewer
+} catch (error) {
+  console.error(error);
+}
+
+// Cesium OSM Buildings
+try {
+   const OSMbuildings = await Cesium.Cesium3DTileset.fromIonAssetId(96188);
+   viewer.scene.primitives.add(OSMbuildings, {
+      clampToGround: true // Clamp to the terrain
+   });
+
+   OSMbuildings.style = new Cesium.Cesium3DTileStyle({
+      color : 'color("red")', // Style in red colour
+   });
+
+} catch (error) {
+  console.log(error);
+}
